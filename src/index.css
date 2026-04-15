@@ -1,0 +1,134 @@
+@import "tailwindcss";
+
+@theme {
+  /* Dark background scale */
+  --color-bg-primary:    #0E0E16;
+  --color-bg-secondary:  #111119;
+  --color-bg-tertiary:   #1A1A26;
+  --color-bg-card:       #16161F;
+  --color-bg-card-hover: #1E1E2C;
+  --color-bg-sidebar:    #111119;
+
+  /* Text */
+  --color-text-primary:   #EEEEF5;
+  --color-text-secondary: #8888A8;
+  --color-text-tertiary:  #505068;
+  --color-text-on-accent: #FFFFFF;
+
+  /* Accent — teal/blue */
+  --color-accent-primary:       #00D4AA;
+  --color-accent-primary-hover: #00EFBF;
+  --color-accent-primary-light: #001E19;
+  --color-accent-warm:          #00D4AA;
+
+  /* Semantic */
+  --color-success:       #4ADE80;
+  --color-success-light: #0D2419;
+  --color-success-bg:    #091A11;
+  --color-warning:       #F59E0B;
+  --color-warning-light: #1C1400;
+  --color-danger:        #F87171;
+  --color-danger-light:  #2A0D0D;
+
+  /* Borders */
+  --color-border:       #252535;
+  --color-border-light: #1C1C2A;
+
+  /* Shadows */
+  --shadow-sm:   0 1px 4px rgba(0,0,0,0.4);
+  --shadow-md:   0 4px 16px rgba(0,0,0,0.5);
+  --shadow-card: 0 2px 8px rgba(0,0,0,0.3), 0 0 0 1px rgba(255,255,255,0.04);
+
+  --radius-sm: 8px;
+  --radius-md: 12px;
+  --radius-lg: 16px;
+  --radius-xl: 20px;
+
+  --font-sans:    'Heebo', sans-serif;
+  --font-display: 'Rubik', 'Heebo', sans-serif;
+}
+
+@layer base {
+  body {
+    background-color: var(--color-bg-primary);
+    color: var(--color-text-primary);
+    font-family: var(--font-sans);
+    line-height: 1.6;
+    min-height: 100vh;
+    overflow-x: hidden;
+  }
+
+  input, select, textarea {
+    color-scheme: dark;
+  }
+
+  ::placeholder {
+    color: var(--color-text-tertiary);
+    opacity: 1;
+  }
+}
+
+@layer utilities {
+  .animate-fade-in {
+    animation: fadeIn 0.25s ease-out;
+  }
+  @keyframes fadeIn {
+    from { opacity: 0; transform: translateY(6px); }
+    to   { opacity: 1; transform: translateY(0); }
+  }
+  /* Phase 2: fade out after strike */
+  .task-exit {
+    animation: taskFade 0.24s ease-out 0.3s forwards;
+  }
+  @keyframes taskFade {
+    from { opacity: 1; transform: translateY(0) scale(1); }
+    to   { opacity: 0; transform: translateY(-4px) scale(0.97); }
+  }
+  /* Phase 1: line crosses the task row */
+  .strike-line {
+    animation: strikeLine 0.28s cubic-bezier(0.4, 0, 0.2, 1) forwards;
+    transform-origin: right center;
+  }
+  @keyframes strikeLine {
+    from { transform: scaleX(0); opacity: 0.9; }
+    to   { transform: scaleX(1); opacity: 0.9; }
+  }
+  /* Congrats card pop-in */
+  .animate-congrats-pop {
+    animation: congratsPop 0.45s cubic-bezier(0.34, 1.56, 0.64, 1) forwards;
+  }
+  @keyframes congratsPop {
+    from { opacity: 0; transform: scale(0.7) translateY(8px); }
+    to   { opacity: 1; transform: scale(1) translateY(0); }
+  }
+  /* Confetti particle float */
+  .particle-float {
+    animation: particleFloat var(--dur, 0.9s) ease-out var(--delay, 0s) forwards;
+    pointer-events: none;
+  }
+  @keyframes particleFloat {
+    0%   { opacity: 1; transform: translate(0, 0) scale(1) rotate(0deg); }
+    100% { opacity: 0; transform: translate(var(--tx, 0px), var(--ty, -50px)) scale(0.3) rotate(var(--rot, 180deg)); }
+  }
+  /* Pulsing glow ring behind congrats card */
+  .animate-glow-ring {
+    animation: glowRing 1.8s ease-in-out infinite;
+  }
+  @keyframes glowRing {
+    0%, 100% { opacity: 0.25; transform: scale(1); }
+    50%       { opacity: 0.5;  transform: scale(1.04); }
+  }
+  /* Next-week suggestion section fade-slide in */
+  .animate-slide-up {
+    animation: slideUp 0.35s cubic-bezier(0.22, 1, 0.36, 1) forwards;
+  }
+  @keyframes slideUp {
+    from { opacity: 0; transform: translateY(12px); }
+    to   { opacity: 1; transform: translateY(0); }
+  }
+  /* Shimmer sweep */
+  @keyframes shimmer {
+    0%   { left: -100%; }
+    100% { left: 200%; }
+  }
+}

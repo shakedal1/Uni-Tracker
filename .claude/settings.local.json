@@ -1,0 +1,14 @@
+{
+  "permissions": {
+    "allow": [
+      "mcp__Claude_Preview__preview_start",
+      "Bash(python .agent/skills/ui-ux-pro-max/scripts/search.py \"university academic tracker mobile dark mode education\" --design-system -p \"Uni Tracker\" -f markdown)",
+      "Bash(python .agent/skills/ui-ux-pro-max/scripts/search.py \"university course editor form dark mobile premium\" --design-system -p \"Uni Tracker\" -f markdown)",
+      "Bash(python .agent/skills/ui-ux-pro-max/scripts/search.py \"dark form premium mobile settings editor\" --domain style)",
+      "Bash(python .agent/skills/ui-ux-pro-max/scripts/search.py \"form input dark glass premium\" --domain ux -n 3)",
+      "WebFetch(domain:www.flaticon.com)",
+      "Bash(npm run:*)",
+      "Bash(npx vercel:*)"
+    ]
+  }
+}
