@@ -1,4 +1,4 @@
-import { NavLink, Outlet, useNavigate } from 'react-router';
+import { NavLink, Outlet, useNavigate, useLocation } from 'react-router';
 import { useAuth } from '../../contexts/AuthContext';
 
 // ── Icons ─────────────────────────────────────────────────────────
@@ -75,6 +75,9 @@ const NAV_ITEMS = [
 export function AppShell() {
   const { user } = useAuth();
   const navigate = useNavigate();
+  const location = useLocation();
+  const onSettings = location.pathname === '/settings';
+  const handleGear = () => onSettings ? navigate(-1) : navigate('/settings');
 
   const displayName: string =
     (user as any)?.user_metadata?.full_name ||
@@ -120,7 +123,7 @@ export function AppShell() {
             <span className="text-xs text-text-secondary truncate">{displayName}</span>
           </div>
           <button
-            onClick={() => navigate('/settings')}
+            onClick={handleGear}
             className="text-text-tertiary hover:text-text-primary transition-colors cursor-pointer shrink-0"
           >
             <IconSettings size={16}/>
@@ -155,7 +158,7 @@ export function AppShell() {
 
           {/* Right: settings cog */}
           <button
-            onClick={() => navigate('/settings')}
+            onClick={handleGear}
             className="text-text-tertiary hover:text-text-primary transition-colors cursor-pointer"
           >
             <IconSettings size={20}/>

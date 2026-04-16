@@ -88,7 +88,7 @@ function groupByCourse(tasks: DashboardTask[]): { course: DashboardTask['course'
     if (!map.has(task.course.id)) map.set(task.course.id, { course: task.course, tasks: [] });
     map.get(task.course.id)!.tasks.push(task);
   }
-  return Array.from(map.values());
+  return Array.from(map.values()).sort((a, b) => a.course.name.localeCompare(b.course.name));
 }
 
 // ── CheckSquare ────────────────────────────────────────────────────────────
@@ -353,6 +353,7 @@ export function DashboardPage() {
   const [loading, setLoading] = useState(true);
   const [showCompleted, setShowCompleted] = useState(false);
   const [exitingTaskIds, setExitingTaskIds] = useState<Set<string>>(new Set());
+  const [exitingGroupIds, setExitingGroupIds] = useState<Set<string>>(new Set());
   const [showCongrats, setShowCongrats] = useState(false);
   const prevThisWeekCountRef = useRef<number>(-1);
 
@@ -407,7 +408,39 @@ export function DashboardPage() {
     const newStatus: TaskStatus = currentStatus === 'completed' ? 'pending' : 'completed';
     if (newStatus === 'completed') {
       setExitingTaskIds(prev => new Set(prev).add(taskId));
-      await new Promise(resolve => setTimeout(resolve, 550)); // strike (300ms) + fade (240ms)
+
+      // Detect if this is the last pending task in its course's section group
+      const task = tasks.find(t => t.id === taskId);
+      let isLastInGroup = false;
+      if (task && activeSemester) {
+        const start = new Date(activeSemester.start_date).getTime();
+        const cw = Math.max(1, Math.min(
+          Math.floor((Date.now() - start) / (1000 * 60 * 60 * 24 * 7)) + 1,
+          activeSemester.num_weeks
+        ));
+        const isOverdue = task.week_number < cw;
+        const isThisWeek = task.week_number === cw;
+        if (isOverdue || isThisWeek) {
+          const siblings = tasks.filter(t =>
+            t.id !== taskId &&
+            t.course_id === task.course_id &&
+            t.status !== 'completed' &&
+            (isOverdue ? t.week_number < cw : t.week_number === cw)
+          );
+          isLastInGroup = siblings.length === 0;
+        }
+      }
+
+      if (isLastInGroup && task) {
+        // Let task strike play first, then collapse the group, then update state
+        await new Promise(resolve => setTimeout(resolve, 350));
+        setExitingGroupIds(prev => new Set(prev).add(task.course.id));
+        await new Promise(resolve => setTimeout(resolve, 380));
+        setExitingGroupIds(prev => { const n = new Set(prev); n.delete(task.course.id); return n; });
+      } else {
+        await new Promise(resolve => setTimeout(resolve, 550)); // strike (300ms) + fade (240ms)
+      }
+
       setExitingTaskIds(prev => { const n = new Set(prev); n.delete(taskId); return n; });
     }
     setTasks(prev => prev.map(t => t.id === taskId ? { ...t, status: newStatus } : t));
@@ -536,13 +569,14 @@ export function DashboardPage() {
               <SectionHeader label={<span style={{ color: '#F87171' }}>באיחור</span>} />
               <div className="flex flex-col gap-1.5">
                 {overdueGroups.map(group => (
-                  <CourseTaskGroup
-                    key={group.course.id}
-                    group={group}
-                    onToggle={toggleTaskStatus}
-                    exitingTaskIds={exitingTaskIds}
-                    showWeek
-                  />
+                  <div key={group.course.id} className={exitingGroupIds.has(group.course.id) ? 'group-exit' : ''}>
+                    <CourseTaskGroup
+                      group={group}
+                      onToggle={toggleTaskStatus}
+                      exitingTaskIds={exitingTaskIds}
+                      showWeek
+                    />
+                  </div>
                 ))}
               </div>
             </div>
@@ -555,12 +589,13 @@ export function DashboardPage() {
               {thisWeekGroups.length > 0 ? (
                 <div className="flex flex-col gap-1.5">
                   {thisWeekGroups.map(group => (
-                    <CourseTaskGroup
-                      key={group.course.id}
-                      group={group}
-                      onToggle={toggleTaskStatus}
-                      exitingTaskIds={exitingTaskIds}
-                    />
+                    <div key={group.course.id} className={exitingGroupIds.has(group.course.id) ? 'group-exit' : ''}>
+                      <CourseTaskGroup
+                        group={group}
+                        onToggle={toggleTaskStatus}
+                        exitingTaskIds={exitingTaskIds}
+                      />
+                    </div>
                   ))}
                 </div>
               ) : null}

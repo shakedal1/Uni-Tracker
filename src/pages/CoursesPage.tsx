@@ -1,9 +1,13 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router';
 import { useSemesters } from '../hooks/useSemesters';
 import { useCourses } from '../hooks/useCourses';
 import { useTasks } from '../hooks/useTasks';
-import type { TaskType } from '../lib/types';
+import { supabase } from '../lib/supabase';
+import { devDb } from '../lib/devDb';
+import type { Task, TaskType } from '../lib/types';
+
+const DEV = import.meta.env.VITE_SKIP_AUTH;
 
 // ── Tokens ─────────────────────────────────────────────
 const BG     = '#09090F';
@@ -74,13 +78,26 @@ export function CoursesPage() {
   const { activeSemester } = useSemesters();
   const { courses, loading, createCourse } = useCourses(activeSemester?.id);
   const { createMultipleTasks } = useTasks();
+  const [allTasks, setAllTasks] = useState<Task[]>([]);
+
+  useEffect(() => {
+    if (!courses.length) { setAllTasks([]); return; }
+    if (DEV) {
+      setAllTasks(courses.flatMap(c => devDb.tasks.getByCourse(c.id)));
+      return;
+    }
+    const ids = courses.map(c => c.id);
+    supabase.from('tasks').select('*').in('course_id', ids).then(({ data }) => {
+      if (data) setAllTasks(data as Task[]);
+    });
+  }, [courses]);
 
   const [showAdd, setShowAdd]           = useState(false);
   const [name, setName]                 = useState('');
   const [courseNumber, setCourseNumber] = useState('');
   const [department, setDepartment]     = useState('');
   const [color, setColor]               = useState(PALETTE[0]);
-  const [structure, setStructure]       = useState<Set<string>>(new Set(['lectures']));
+  const [structure, setStructure]       = useState<Set<string>>(new Set(['lectures', 'tutorials']));
   const [isSubmitting, setIsSubmitting] = useState(false);
 
   const toggleStructure = (id: string) =>
@@ -88,7 +105,7 @@ export function CoursesPage() {
 
   const resetForm = () => {
     setName(''); setCourseNumber(''); setDepartment('');
-    setColor(PALETTE[0]); setStructure(new Set(['lectures'])); setShowAdd(false);
+    setColor(PALETTE[0]); setStructure(new Set(['lectures', 'tutorials'])); setShowAdd(false);
   };
 
   const handleSubmit = async (e: React.FormEvent) => {
@@ -168,9 +185,9 @@ export function CoursesPage() {
         <p className="text-[10px] font-black tracking-[0.18em] mb-2.5" style={{ color: TEAL }}>
           הוספת קורס חדש
         </p>
-        <h1 className="font-display font-black leading-none mb-3"
+        <h1 key={color} className="font-display font-black leading-none mb-3"
           style={{
-            fontSize: 40, letterSpacing: -1, transition: 'color 0.3s',
+            fontSize: 40, letterSpacing: -1, display: 'block', width: 'fit-content',
             background: name ? `linear-gradient(135deg, ${color} 0%, #00EFBF 100%)` : undefined,
             WebkitBackgroundClip: name ? 'text' : undefined,
             backgroundClip: name ? 'text' : undefined,
@@ -357,29 +374,96 @@ export function CoursesPage() {
         </div>
       ) : (
         <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-          {courses.map(course => (
-            <div key={course.id} onClick={() => navigate(`/courses/${course.id}`)}
-              className="bg-bg-card border border-border rounded-lg p-4 shadow-card hover:bg-bg-card-hover transition-all relative overflow-hidden cursor-pointer">
-              <div className="absolute top-0 right-0 left-0 h-1 rounded-t-2xl" style={{ background: course.color }}/>
-              <h3 className="font-display text-[15px] font-bold text-text-primary mb-1 mt-1">{course.name}</h3>
-              {course.course_number && (
-                <p className="text-[11px] font-semibold mb-3 px-2 py-0.5 rounded-md inline-block"
-                  style={{ background: `${course.color}18`, color: course.color }}>
-                  {course.course_number}
-                </p>
-              )}
-              <div className="flex gap-4 mt-3">
-                <div className="flex flex-col">
-                  <span className="text-base font-bold" style={{ color: '#4ADE80' }}>0</span>
-                  <span className="text-[10px] text-text-tertiary">הושלמו</span>
+          {courses.map(course => {
+            const courseTasks = allTasks.filter(t => t.course_id === course.id);
+            const TYPE_CONFIG: { type: TaskType; label: string; color: string }[] = [
+              { type: 'lecture',    label: 'הרצאות',  color: course.color },
+              { type: 'tutorial',   label: 'תרגולים', color: course.color },
+              { type: 'workshop',   label: 'סדנאות',  color: course.color },
+              { type: 'assignment', label: 'מטלות',   color: course.color },
+            ];
+            const typeStats = TYPE_CONFIG.map(({ type, label, color }) => {
+              const tt = courseTasks.filter(t => t.type === type);
+              if (!tt.length) return null;
+              const completed = tt.filter(t => t.status === 'completed').length;
+              return { type, label, color, completed, total: tt.length, pct: Math.round((completed / tt.length) * 100) };
+            }).filter(Boolean) as { type: string; label: string; color: string; completed: number; total: number; pct: number }[];
+
+            const pendingTasks = courseTasks.filter(t => t.status !== 'completed');
+            const nextWeek = pendingTasks.length ? Math.min(...pendingTasks.map(t => t.week_number)) : null;
+
+            return (
+              <div
+                key={course.id}
+                onClick={() => navigate(`/courses/${course.id}`)}
+                className="cursor-pointer transition-all hover:scale-[1.01]"
+                style={{
+                  display: 'flex',
+                  borderRadius: 12,
+                  overflow: 'hidden',
+                  border: `1px solid rgba(255,255,255,0.07)`,
+                  minHeight: 110,
+                }}
+              >
+                {/* Right panel — course info */}
+                <div style={{
+                  width: '42%',
+                  flexShrink: 0,
+                  background: `linear-gradient(160deg, ${course.color}22 0%, ${course.color}08 100%)`,
+                  borderLeft: '1px solid rgba(255,255,255,0.05)',
+                  padding: '14px 13px',
+                  display: 'flex',
+                  flexDirection: 'column',
+                  justifyContent: 'space-between',
+                }}>
+                  <div>
+                    <h3 style={{ fontSize: 16, fontWeight: 700, color: WHITE, lineHeight: 1.4, margin: 0 }}>{course.name}</h3>
+                  </div>
+                  {course.course_number && (
+                    <span style={{ fontSize: 10, fontWeight: 600, color: course.color, opacity: 0.75 }}>{course.course_number}</span>
+                  )}
                 </div>
-                <div className="flex flex-col">
-                  <span className="text-base font-bold text-accent-primary">0</span>
-                  <span className="text-[10px] text-text-tertiary">נשארו</span>
+
+                {/* Left panel — stats */}
+                <div style={{
+                  flex: 1,
+                  background: CARD,
+                  padding: '12px 14px',
+                  display: 'flex',
+                  flexDirection: 'column',
+                  justifyContent: typeStats.length ? 'space-between' : 'center',
+                  minWidth: 0,
+                }}>
+                  {nextWeek !== null && (
+                    <p style={{ fontSize: 11, fontWeight: 700, letterSpacing: '0.06em', color: MUTED, margin: '0 0 6px' }}>שבוע {nextWeek}</p>
+                  )}
+                  {typeStats.length > 0 ? (
+                    <div style={{ display: 'flex', flexDirection: 'column', gap: 5 }}>
+                      {typeStats.map(stat => (
+                        <div key={stat.type}>
+                          <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 3, alignItems: 'center' }}>
+                            <span style={{ fontSize: 9, fontWeight: 600, color: MUTED }}>{stat.completed}/{stat.total}</span>
+                            <span style={{ fontSize: 9, fontWeight: 600, color: MUTED }}>{stat.label}</span>
+                          </div>
+                          <div style={{ height: 3, borderRadius: 99, background: 'rgba(255,255,255,0.07)' }}>
+                            <div style={{
+                              height: '100%', borderRadius: 99,
+                              width: `${stat.pct}%`,
+                              background: stat.color,
+                              minWidth: stat.pct > 0 ? 5 : 0,
+                              transition: 'width 0.5s ease',
+                            }}/>
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                  ) : (
+                    <span style={{ fontSize: 11, color: MUTED }}>אין משימות</span>
+                  )}
                 </div>
               </div>
-            </div>
-          ))}
+            );
+          })}
         </div>
       )}
     </div>

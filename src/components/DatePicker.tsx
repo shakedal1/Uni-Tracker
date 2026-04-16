@@ -47,13 +47,17 @@ export function DatePicker({ value, onChange, label, accent = '#00D4AA' }: DateP
     return () => document.removeEventListener('mousedown', handler);
   }, [open]);
 
+  const POPUP_W = 308;
+
   const openCalendar = () => {
     if (!triggerRef.current) return;
     const rect = triggerRef.current.getBoundingClientRect();
     const spaceBelow = window.innerHeight - rect.bottom;
-    const popupH = 340;
+    const popupH = 370;
     const top = spaceBelow > popupH ? rect.bottom + 6 : rect.top - popupH - 6;
-    setPopupPos({ top, left: rect.left, width: rect.width });
+    // Align right edge of popup to right edge of trigger; clamp to viewport
+    const left = Math.max(8, Math.min(rect.right - POPUP_W, window.innerWidth - POPUP_W - 8));
+    setPopupPos({ top, left, width: POPUP_W });
     setOpen(true);
   };
 
@@ -136,23 +140,21 @@ export function DatePicker({ value, onChange, label, accent = '#00D4AA' }: DateP
           }}
         >
           {/* Month navigation */}
-          <div className="flex items-center justify-between px-4 pt-4 pb-2">
-            {/* In RTL flex: first child = visually RIGHT = next month */}
+          <div className="flex items-center justify-between px-5 pt-5 pb-3">
             <button type="button" onClick={nextMonth}
-              className="w-8 h-8 rounded-full flex items-center justify-center transition-opacity hover:opacity-70"
+              className="w-9 h-9 rounded-full flex items-center justify-center transition-opacity hover:opacity-70"
               style={{ color: accent, background: `${accent}18` }}>
               <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
                 <polyline points="9 18 15 12 9 6"/>
               </svg>
             </button>
 
-            <span className="font-bold text-[15px]" style={{ color: TEXT }}>
+            <span className="font-bold text-[16px] whitespace-nowrap" style={{ color: TEXT }}>
               {MONTHS_HE[view.month]} {view.year}
             </span>
 
-            {/* In RTL flex: last child = visually LEFT = prev month */}
             <button type="button" onClick={prevMonth}
-              className="w-8 h-8 rounded-full flex items-center justify-center transition-opacity hover:opacity-70"
+              className="w-9 h-9 rounded-full flex items-center justify-center transition-opacity hover:opacity-70"
               style={{ color: accent, background: `${accent}18` }}>
               <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
                 <polyline points="15 18 9 12 15 6"/>
@@ -161,23 +163,23 @@ export function DatePicker({ value, onChange, label, accent = '#00D4AA' }: DateP
           </div>
 
           {/* Day-of-week headers */}
-          <div className="grid grid-cols-7 px-2 pb-1">
+          <div className="grid grid-cols-7 px-3 pb-1">
             {DAYS_SHORT.map(d => (
-              <div key={d} className="h-8 flex items-center justify-center text-[10px] font-bold" style={{ color: MUTED }}>
+              <div key={d} className="h-9 flex items-center justify-center text-[11px] font-bold" style={{ color: MUTED }}>
                 {d}
               </div>
             ))}
           </div>
 
           {/* Date grid */}
-          <div className="grid grid-cols-7 px-2 pb-4 gap-y-0.5">
+          <div className="grid grid-cols-7 px-3 pb-5 gap-y-1">
             {cells.map((day, i) => (
               <div key={i} className="flex justify-center">
                 {day ? (
                   <button
                     type="button"
                     onClick={() => selectDay(day)}
-                    className="w-9 h-9 rounded-full flex items-center justify-center text-[13px] relative transition-all"
+                    className="w-10 h-10 rounded-full flex items-center justify-center text-[14px] relative transition-all"
                     style={{
                       background: isSelected(day) ? accent : isToday(day) ? CARD2 : 'transparent',
                       color: isSelected(day) ? '#09090F' : isToday(day) ? accent : TEXT,
@@ -188,7 +190,7 @@ export function DatePicker({ value, onChange, label, accent = '#00D4AA' }: DateP
                     {day}
                   </button>
                 ) : (
-                  <div className="w-9 h-9" />
+                  <div className="w-10 h-10" />
                 )}
               </div>
             ))}

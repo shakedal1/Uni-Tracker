@@ -1,5 +1,6 @@
 import { useState } from 'react';
 import { useSemesters } from '../hooks/useSemesters';
+import { DatePicker } from '../components/DatePicker';
 
 export function SemestersPage() {
   const { semesters, loading, createSemester, setActiveSemester, deleteSemester } = useSemesters();
@@ -25,6 +26,7 @@ export function SemestersPage() {
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
+    if (!startDate) return;
     setIsSubmitting(true);
     try {
       await createSemester({ name, start_date: startDate, num_weeks: numWeeks, is_active: semesters.length === 0 });
@@ -68,12 +70,7 @@ export function SemestersPage() {
             </div>
             <div className="grid grid-cols-2 gap-3">
               <div>
-                <label className="block text-xs font-bold text-text-secondary mb-1.5">תאריך התחלה</label>
-                <input
-                  required value={startDate} onChange={e => setStartDate(e.target.value)}
-                  type="date" dir="ltr"
-                  className="w-full px-3 py-2.5 rounded-lg border border-border bg-bg-primary text-text-primary focus:outline-none focus:border-accent-primary transition-colors text-sm"
-                />
+                <DatePicker value={startDate} onChange={setStartDate} label="תאריך התחלה" />
               </div>
               <div>
                 <label className="block text-xs font-bold text-text-secondary mb-1.5">מספר שבועות</label>
