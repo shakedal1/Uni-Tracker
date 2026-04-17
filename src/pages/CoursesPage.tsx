@@ -9,6 +9,46 @@ import type { Task, TaskType } from '../lib/types';
 
 const DEV = import.meta.env.VITE_SKIP_AUTH;
 
+// ── Unsplash photo backgrounds ──────────────────────────
+const UNSPLASH_KEY = import.meta.env.VITE_UNSPLASH_ACCESS_KEY;
+
+const SUBJECT_QUERIES: { keywords: string[]; query: string }[] = [
+  { keywords: ['תכנות','מחשב','אלגוריתם','בינה מלאכותית','רשתות','סייבר','programming','computer','algorithm','software','ai','cyber','database','web'], query: 'computer science technology code' },
+  { keywords: ['מתמטיקה','אלגברה','חשבון','דיסקרטית','סטטיסטיקה','הסתברות','לינארית','math','algebra','calculus','statistics','probability','discrete'], query: 'mathematics abstract geometry' },
+  { keywords: ['פיזיקה','מכניקה','קוונטים','תרמודינמיקה','אופטיקה','physics','quantum','mechanics','thermodynamics','optics'], query: 'physics universe science abstract' },
+  { keywords: ['כימיה','אורגנית','ביוכימיה','chemistry','organic','biochemistry','molecular'], query: 'chemistry laboratory science' },
+  { keywords: ['ביולוגיה','גנטיקה','אקולוגיה','אנטומיה','פיזיולוגיה','biology','genetics','ecology','anatomy','neuroscience'], query: 'biology nature microscope science' },
+  { keywords: ['כלכלה','מימון','חשבונאות','ניהול','שיווק','economics','finance','accounting','management','marketing','business'], query: 'finance business city skyscraper' },
+  { keywords: ['פסיכולוגיה','סוציולוגיה','קוגניטיבי','psychology','sociology','cognitive','behavior'], query: 'psychology mind human abstract' },
+  { keywords: ['היסטוריה','ארכאולוגיה','פילוסופיה','history','archaeology','philosophy','ancient'], query: 'history ancient architecture ruins' },
+  { keywords: ['ספרות','שפה','לשון','בלשנות','literature','language','linguistics','writing'], query: 'books library literature' },
+  { keywords: ['אמנות','עיצוב','צילום','מוזיקה','תיאטרון','art','design','photography','music','theatre','creative'], query: 'art design creative abstract' },
+  { keywords: ['הנדסה','אלקטרוניקה','חשמל','מכונות','engineering','electrical','mechanical','civil'], query: 'engineering industrial technology' },
+  { keywords: ['רפואה','סיעוד','פרמקולוגיה','medicine','nursing','pharmacology','medical'], query: 'medicine healthcare science' },
+  { keywords: ['משפטים','מדיניות','ממשל','law','policy','government','legal'], query: 'law justice architecture courtroom' },
+  { keywords: ['גאוגרפיה','סביבה','אקלים','geography','environment','climate','geology'], query: 'geography landscape nature earth' },
+];
+
+// Add engineering/CS catch-all for acronyms & technical names
+const TECHNICAL_PATTERN = /^[A-Z0-9]{2,6}$|vlsi|fpga|vhdl|risc|arm|gpu|cpu|mips|tcp|osi|ram|rom/i;
+
+function getUnsplashQuery(name: string): string {
+  const lower = name.toLowerCase();
+  const match = SUBJECT_QUERIES.find(s => s.keywords.some(k => lower.includes(k)));
+  if (match) return match.query;
+  // Technical acronyms / short caps → engineering photo
+  if (TECHNICAL_PATTERN.test(name.trim())) return 'engineering technology microchip circuit';
+  // Generic academic fallback
+  return 'university study abstract academic';
+}
+
+// Fallback gradient (used while photo loads or if no API key)
+function getCourseGradient(name: string): string {
+  const hash = [...name].reduce((acc, c) => acc + c.charCodeAt(0), 0);
+  const hue = hash % 360;
+  return `linear-gradient(160deg, hsl(${hue},40%,8%) 0%, hsl(${(hue + 40) % 360},35%,11%) 100%)`;
+}
+
 // ── Tokens ─────────────────────────────────────────────
 const BG     = '#09090F';
 const CARD   = '#0F0F1A';
@@ -79,6 +119,29 @@ export function CoursesPage() {
   const { courses, loading, createCourse } = useCourses(activeSemester?.id);
   const { createMultipleTasks } = useTasks();
   const [allTasks, setAllTasks] = useState<Task[]>([]);
+  const [courseImages, setCourseImages] = useState<Record<string, string>>({});
+
+  const fetchCourseImage = (courseId: string, courseName: string) => {
+    if (!UNSPLASH_KEY) return;
+    const cacheKey = `course_img_${courseId}`;
+    const cached = localStorage.getItem(cacheKey);
+    // Ignore empty-string cached failures from previous fetches
+    if (cached && cached.startsWith('http')) { setCourseImages(p => ({ ...p, [courseId]: cached })); return; }
+    if (cached) localStorage.removeItem(cacheKey); // clear bad cache entry
+    const query = getUnsplashQuery(courseName);
+    fetch(`https://api.unsplash.com/search/photos?query=${encodeURIComponent(query)}&per_page=1&orientation=landscape&client_id=${UNSPLASH_KEY}`)
+      .then(r => r.json())
+      .then(data => {
+        const url = data.results?.[0]?.urls?.small;
+        if (url) { localStorage.setItem(cacheKey, url); setCourseImages(p => ({ ...p, [courseId]: url })); }
+      })
+      .catch(() => {});
+  };
+
+  // Fetch photos for all courses on load
+  useEffect(() => {
+    courses.forEach(c => fetchCourseImage(c.id, c.name));
+  }, [courses]);
 
   useEffect(() => {
     if (!courses.length) { setAllTasks([]); return; }
@@ -114,7 +177,10 @@ export function CoursesPage() {
     setIsSubmitting(true);
     try {
       const createdCourse = await createCourse({ semester_id: activeSemester.id, name, course_number: courseNumber || null, color });
-      
+
+      // Start image fetch immediately while tasks are being created
+      if (createdCourse) fetchCourseImage(createdCourse.id, name);
+
       if (createdCourse && structure.size > 0 && activeSemester.num_weeks) {
         const weeks = activeSemester.num_weeks;
         const newTasks = [];
@@ -132,7 +198,9 @@ export function CoursesPage() {
         }
 
         if (newTasks.length > 0) {
-          await createMultipleTasks(newTasks);
+          const created = await createMultipleTasks(newTasks);
+          // Update allTasks directly — the useEffect would fire too early (before tasks exist)
+          if (created) setAllTasks(prev => [...prev, ...(created as Task[])]);
         }
       }
 
@@ -409,7 +477,9 @@ export function CoursesPage() {
                 <div style={{
                   width: '42%',
                   flexShrink: 0,
-                  background: `linear-gradient(160deg, ${course.color}22 0%, ${course.color}08 100%)`,
+                  background: courseImages[course.id]
+                    ? `linear-gradient(rgba(0,0,0,0.55),rgba(0,0,0,0.45)), url(${courseImages[course.id]}) center/cover no-repeat`
+                    : getCourseGradient(course.name),
                   borderLeft: '1px solid rgba(255,255,255,0.05)',
                   padding: '14px 13px',
                   display: 'flex',
