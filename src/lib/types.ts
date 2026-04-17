@@ -30,3 +30,16 @@ export type Task = {
   due_date: string | null;
   is_surprise: boolean;
 };
+
+export type FeedbackType = 'bug' | 'suggestion';
+
+export type Feedback = {
+  id: string;
+  user_id: string;
+  user_email: string;
+  type: FeedbackType;
+  title: string;
+  description: string;
+  image_urls: string[];
+  created_at: string;
+};

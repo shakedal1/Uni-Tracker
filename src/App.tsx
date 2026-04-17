@@ -9,6 +9,7 @@ import { CourseDetailsPage } from './pages/CourseDetailsPage';
 import { DashboardPage } from './pages/DashboardPage';
 import { AssignmentsPage } from './pages/AssignmentsPage';
 import { SettingsPage } from './pages/SettingsPage';
+import { FeedbackPage } from './pages/FeedbackPage';
 import './index.css';
 
 function App() {
@@ -17,7 +18,7 @@ function App() {
       <BrowserRouter>
         <Routes>
           <Route path="/login" element={<LoginPage />} />
-          
+
           <Route element={<AuthGuard />}>
             <Route element={<AppShell />}>
               <Route index element={<DashboardPage />} />
@@ -26,6 +27,7 @@ function App() {
               <Route path="semesters" element={<SemestersPage />} />
               <Route path="assignments" element={<AssignmentsPage />} />
               <Route path="settings" element={<SettingsPage />} />
+              <Route path="feedback" element={<FeedbackPage />} />
             </Route>
           </Route>
         </Routes>

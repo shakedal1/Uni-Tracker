@@ -1,4 +1,6 @@
 import { NavLink, Outlet, useNavigate, useLocation } from 'react-router';
+import { useState } from 'react';
+import { FeedbackModal } from '../FeedbackModal';
 import { useAuth } from '../../contexts/AuthContext';
 
 // ── Icons ─────────────────────────────────────────────────────────
@@ -56,6 +58,14 @@ function IconClipboard({ size = 24 }: { size?: number }) {
   );
 }
 
+function IconFeedback({ size = 24 }: { size?: number }) {
+  return (
+    <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
+      <path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/>
+    </svg>
+  );
+}
+
 function IconSettings({ size = 24 }: { size?: number }) {
   return (
     <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round">
@@ -76,6 +86,7 @@ export function AppShell() {
   const { user } = useAuth();
   const navigate = useNavigate();
   const location = useLocation();
+  const [showFeedback, setShowFeedback] = useState(false);
   const onSettings = location.pathname === '/settings';
   const handleGear = () => onSettings ? navigate(-1) : navigate('/settings');
 
@@ -156,13 +167,22 @@ export function AppShell() {
             <span className="text-sm font-medium text-text-secondary">{displayName}</span>
           </div>
 
-          {/* Right: settings cog */}
-          <button
-            onClick={handleGear}
-            className="text-text-tertiary hover:text-text-primary transition-colors cursor-pointer"
-          >
-            <IconSettings size={20}/>
-          </button>
+          {/* Right: feedback + settings */}
+          <div className="flex items-center gap-1">
+            <button
+              onClick={() => setShowFeedback(true)}
+              className="text-text-tertiary hover:text-text-primary transition-colors cursor-pointer p-1.5 rounded-lg hover:bg-white/5"
+              title="דווח על באג / הצעה"
+            >
+              <IconFeedback size={18}/>
+            </button>
+            <button
+              onClick={handleGear}
+              className="text-text-tertiary hover:text-text-primary transition-colors cursor-pointer p-1.5 rounded-lg hover:bg-white/5"
+            >
+              <IconSettings size={20}/>
+            </button>
+          </div>
         </header>
 
         {/* ── Page content ── */}
@@ -170,6 +190,8 @@ export function AppShell() {
           <Outlet/>
         </main>
       </div>
+
+      {showFeedback && <FeedbackModal onClose={() => setShowFeedback(false)} />}
 
       {/* ── Mobile Bottom Nav ── */}
       <nav

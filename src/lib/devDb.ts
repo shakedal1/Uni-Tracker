@@ -56,6 +56,20 @@ export const devDb = {
     },
   },
 
+  feedback: {
+    getAll: () => getCol<any>('dev_feedback').sort((a: any, b: any) => b.created_at.localeCompare(a.created_at)),
+    insert(data: any) {
+      const item = { ...data, id: crypto.randomUUID(), user_id: DEV_USER_ID, created_at: new Date().toISOString() };
+      const all = getCol<any>('dev_feedback');
+      all.unshift(item);
+      setCol('dev_feedback', all);
+      return item;
+    },
+    delete(id: string) {
+      setCol('dev_feedback', getCol<any>('dev_feedback').filter((f: any) => f.id !== id));
+    },
+  },
+
   tasks: {
     getByCourse: (courseId: string) =>
       getCol<any>('dev_tasks')
