@@ -161,14 +161,21 @@ export function CoursesPage() {
   const [department, setDepartment]     = useState('');
   const [color, setColor]               = useState(PALETTE[0]);
   const [structure, setStructure]       = useState<Set<string>>(new Set(['lectures', 'tutorials']));
+  const [counts, setCounts]             = useState<Record<string, number>>({ lectures: 1, tutorials: 1, workshops: 1 });
   const [isSubmitting, setIsSubmitting] = useState(false);
 
   const toggleStructure = (id: string) =>
     setStructure(prev => { const s = new Set(prev); s.has(id) ? s.delete(id) : s.add(id); return s; });
 
+  const adjustCount = (id: string, delta: number) =>
+    setCounts(prev => ({ ...prev, [id]: Math.min(5, Math.max(1, (prev[id] ?? 1) + delta)) }));
+
   const resetForm = () => {
     setName(''); setCourseNumber(''); setDepartment('');
-    setColor(PALETTE[0]); setStructure(new Set(['lectures', 'tutorials'])); setShowAdd(false);
+    setColor(PALETTE[0]);
+    setStructure(new Set(['lectures', 'tutorials']));
+    setCounts({ lectures: 1, tutorials: 1, workshops: 1 });
+    setShowAdd(false);
   };
 
   const handleSubmit = async (e: React.FormEvent) => {
@@ -184,16 +191,20 @@ export function CoursesPage() {
       if (createdCourse && structure.size > 0 && activeSemester.num_weeks) {
         const weeks = activeSemester.num_weeks;
         const newTasks = [];
-        
+        const TASK_META: { id: string; hebTitle: string; type: TaskType }[] = [
+          { id: 'lectures',  hebTitle: 'הרצאה', type: 'lecture'  },
+          { id: 'tutorials', hebTitle: 'תרגול',  type: 'tutorial' },
+          { id: 'workshops', hebTitle: 'סדנה',   type: 'workshop' },
+        ];
+
         for (let w = 1; w <= weeks; w++) {
-          if (structure.has('lectures')) {
-            newTasks.push({ course_id: createdCourse.id, title: `הרצאה שבוע ${w}`, type: 'lecture' as TaskType, week_number: w, status: 'pending' as const, description: null, due_date: null, is_surprise: false });
-          }
-          if (structure.has('tutorials')) {
-            newTasks.push({ course_id: createdCourse.id, title: `תרגול שבוע ${w}`, type: 'tutorial' as TaskType, week_number: w, status: 'pending' as const, description: null, due_date: null, is_surprise: false });
-          }
-          if (structure.has('workshops')) {
-            newTasks.push({ course_id: createdCourse.id, title: `סדנה שבוע ${w}`, type: 'workshop' as TaskType, week_number: w, status: 'pending' as const, description: null, due_date: null, is_surprise: false });
+          for (const { id, hebTitle, type } of TASK_META) {
+            if (!structure.has(id)) continue;
+            const count = counts[id] ?? 1;
+            for (let i = 0; i < count; i++) {
+              const suffix = count > 1 ? ` ${i + 1}` : '';
+              newTasks.push({ course_id: createdCourse.id, title: `${hebTitle}${suffix} שבוע ${w}`, type, week_number: w, status: 'pending' as const, description: null, due_date: null, is_surprise: false });
+            }
           }
         }
 
@@ -340,6 +351,7 @@ export function CoursesPage() {
             <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
               {STRUCTURE.map(opt => {
                 const on = structure.has(opt.id);
+                const count = counts[opt.id] ?? 1;
                 return (
                   <button key={opt.id} type="button" onClick={() => toggleStructure(opt.id)}
                     className="cursor-pointer transition-all duration-200 text-right"
@@ -373,6 +385,45 @@ export function CoursesPage() {
                       </p>
                       <p style={{ fontSize: 12, color: MUTED, marginTop: 3 }}>{opt.sub}</p>
                     </div>
+
+                    {/* Counter (visible only when active) */}
+                    {on && (
+                      <div
+                        onClick={e => e.stopPropagation()}
+                        style={{ display: 'flex', alignItems: 'center', gap: 6, flexShrink: 0 }}>
+                        <button
+                          type="button"
+                          onClick={e => { e.stopPropagation(); adjustCount(opt.id, -1); }}
+                          disabled={count <= 1}
+                          style={{
+                            width: 26, height: 26, borderRadius: 6, flexShrink: 0,
+                            border: `1px solid ${PURPLE}50`,
+                            background: count <= 1 ? 'rgba(255,255,255,0.03)' : `${PURPLE}18`,
+                            color: count <= 1 ? MUTED : WHITE,
+                            fontSize: 16, fontWeight: 700, lineHeight: 1,
+                            display: 'flex', alignItems: 'center', justifyContent: 'center',
+                            cursor: count <= 1 ? 'default' : 'pointer',
+                            transition: 'all 0.15s',
+                          }}>−</button>
+                        <span style={{ fontSize: 14, fontWeight: 700, color: WHITE, minWidth: 14, textAlign: 'center' }}>
+                          {count}
+                        </span>
+                        <button
+                          type="button"
+                          onClick={e => { e.stopPropagation(); adjustCount(opt.id, 1); }}
+                          disabled={count >= 5}
+                          style={{
+                            width: 26, height: 26, borderRadius: 6, flexShrink: 0,
+                            border: `1px solid ${PURPLE}50`,
+                            background: count >= 5 ? 'rgba(255,255,255,0.03)' : `${PURPLE}18`,
+                            color: count >= 5 ? MUTED : WHITE,
+                            fontSize: 16, fontWeight: 700, lineHeight: 1,
+                            display: 'flex', alignItems: 'center', justifyContent: 'center',
+                            cursor: count >= 5 ? 'default' : 'pointer',
+                            transition: 'all 0.15s',
+                          }}>+</button>
+                      </div>
+                    )}
 
                     {/* Icon box */}
                     <div style={{
