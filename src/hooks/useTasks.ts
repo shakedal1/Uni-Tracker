@@ -4,6 +4,12 @@ import { devDb } from '../lib/devDb';
 import type { Task, TaskStatus } from '../lib/types';
 import { useAuth } from '../contexts/AuthContext';
 
+const TYPE_ORDER: Record<string, number> = { lecture: 0, tutorial: 1, workshop: 2, assignment: 3 };
+const sortTasks = (a: Task, b: Task) =>
+  a.week_number - b.week_number ||
+  (TYPE_ORDER[a.type] ?? 99) - (TYPE_ORDER[b.type] ?? 99) ||
+  a.id.localeCompare(b.id);
+
 const DEV = import.meta.env.VITE_SKIP_AUTH;
 
 export function useTasks(courseId?: string) {
@@ -30,7 +36,7 @@ export function useTasks(courseId?: string) {
         .order('id', { ascending: true });
 
       if (error) throw error;
-      setTasks(data as Task[]);
+      setTasks((data as Task[]).sort(sortTasks));
     } catch (err: any) {
       setError(err.message);
     } finally {

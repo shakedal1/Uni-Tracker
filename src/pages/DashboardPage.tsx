@@ -194,6 +194,14 @@ function CourseTaskGroup({ group, onToggle, exitingTaskIds, showWeek, dimmed, no
               />
             )}
 
+            {/* Type icon */}
+            <span style={{
+              display: 'inline-flex', alignItems: 'center', flexShrink: 0,
+              color: completed ? 'rgba(255,255,255,0.18)' : 'rgba(255,255,255,0.45)',
+            }}>
+              {s.icon}
+            </span>
+
             {/* Title */}
             <span
               style={{
@@ -204,17 +212,6 @@ function CourseTaskGroup({ group, onToggle, exitingTaskIds, showWeek, dimmed, no
               }}
             >
               {task.title}
-            </span>
-
-            {/* Type badge: icon + label */}
-            <span style={{
-              display: 'inline-flex', alignItems: 'center', gap: 4,
-              fontSize: 10, fontWeight: 510, flexShrink: 0,
-              padding: '2px 6px', borderRadius: 4,
-              background: s.bg, color: s.color,
-            }}>
-              {s.icon}
-              {s.label}
             </span>
 
             {/* Week (overdue only) */}

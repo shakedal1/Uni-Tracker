@@ -1,6 +1,7 @@
 // localStorage-backed mock database for VITE_SKIP_AUTH dev mode
 
 const DEV_USER_ID = 'dev-user-00000000-0000-0000-0000-000000000000';
+const TYPE_ORDER: Record<string, number> = { lecture: 0, tutorial: 1, workshop: 2, assignment: 3 };
 
 function getCol<T>(key: string): T[] {
   try { return JSON.parse(localStorage.getItem(key) || '[]'); }
@@ -74,7 +75,7 @@ export const devDb = {
     getByCourse: (courseId: string) =>
       getCol<any>('dev_tasks')
         .filter((t: any) => t.course_id === courseId)
-        .sort((a: any, b: any) => a.week_number - b.week_number || a.id.localeCompare(b.id)),
+        .sort((a: any, b: any) => a.week_number - b.week_number || TYPE_ORDER[a.type] - TYPE_ORDER[b.type] || a.id.localeCompare(b.id)),
     getBySemester(semesterId: string) {
       const courses = getCol<any>('dev_courses').filter((c: any) => c.semester_id === semesterId);
       const courseMap = Object.fromEntries(courses.map((c: any) => [c.id, c]));
@@ -82,7 +83,7 @@ export const devDb = {
       return getCol<any>('dev_tasks')
         .filter((t: any) => courseIds.has(t.course_id))
         .map((t: any) => ({ ...t, course: courseMap[t.course_id] }))
-        .sort((a: any, b: any) => a.week_number - b.week_number || a.id.localeCompare(b.id));
+        .sort((a: any, b: any) => a.week_number - b.week_number || TYPE_ORDER[a.type] - TYPE_ORDER[b.type] || a.id.localeCompare(b.id));
     },
     insert(data: any) {
       const item = { ...data, id: crypto.randomUUID() };

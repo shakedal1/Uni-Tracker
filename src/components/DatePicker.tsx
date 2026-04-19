@@ -1,4 +1,5 @@
 import { useState, useRef, useEffect } from 'react';
+import { createPortal } from 'react-dom';
 
 const MONTHS_HE = ['ינואר','פברואר','מרץ','אפריל','מאי','יוני','יולי','אוגוסט','ספטמבר','אוקטובר','נובמבר','דצמבר'];
 const DAYS_SHORT = ['א׳','ב׳','ג׳','ד׳','ה׳','ו׳','ש׳']; // Sun→Sat (RTL grid places Sun on right)
@@ -71,8 +72,9 @@ export function DatePicker({ value, onChange, label, accent = '#00D4AA' }: DateP
   while (cells.length % 7 !== 0) cells.push(null);
 
   const selectDay = (day: number) => {
-    const iso = new Date(view.year, view.month, day).toISOString().split('T')[0];
-    onChange(iso);
+    const m = String(view.month + 1).padStart(2, '0');
+    const d = String(day).padStart(2, '0');
+    onChange(`${view.year}-${m}-${d}`);
     setOpen(false);
   };
 
@@ -125,8 +127,8 @@ export function DatePicker({ value, onChange, label, accent = '#00D4AA' }: DateP
         <span className="flex-1 text-right">{displayValue}</span>
       </button>
 
-      {/* Calendar popup — fixed to escape overflow:hidden ancestors */}
-      {open && (
+      {/* Calendar popup — portalled to body to escape stacking contexts */}
+      {open && createPortal(
         <div
           data-datepicker
           className="fixed z-[9999] rounded-[10px] shadow-2xl overflow-hidden"
@@ -179,12 +181,13 @@ export function DatePicker({ value, onChange, label, accent = '#00D4AA' }: DateP
                   <button
                     type="button"
                     onClick={() => selectDay(day)}
-                    className="w-10 h-10 rounded-full flex items-center justify-center text-[14px] relative transition-all"
+                    className="w-10 h-10 rounded-full flex items-center justify-center text-[14px] relative transition-all hover:opacity-80"
                     style={{
                       background: isSelected(day) ? accent : isToday(day) ? CARD2 : 'transparent',
                       color: isSelected(day) ? '#09090F' : isToday(day) ? accent : TEXT,
                       fontWeight: isSelected(day) || isToday(day) ? 700 : 400,
                       border: isToday(day) && !isSelected(day) ? `1.5px solid ${accent}60` : 'none',
+                      cursor: 'pointer',
                     }}
                   >
                     {day}
@@ -195,7 +198,8 @@ export function DatePicker({ value, onChange, label, accent = '#00D4AA' }: DateP
               </div>
             ))}
           </div>
-        </div>
+        </div>,
+        document.body
       )}
     </div>
   );
