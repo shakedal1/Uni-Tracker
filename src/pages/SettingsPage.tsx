@@ -1,4 +1,4 @@
-import { useState, useRef } from 'react';
+import { useState, useRef, useEffect } from 'react';
 import { useNavigate } from 'react-router';
 import { useAuth } from '../contexts/AuthContext';
 import { useSemesters } from '../hooks/useSemesters';
@@ -33,6 +33,30 @@ function startDateForWeek(targetWeek: number): string {
   return d.toISOString().split('T')[0];
 }
 
+function usePWAInstall() {
+  const [prompt, setPrompt] = useState<any>(null);
+  const [installed, setInstalled] = useState(
+    window.matchMedia('(display-mode: standalone)').matches
+  );
+
+  useEffect(() => {
+    const handler = (e: Event) => { e.preventDefault(); setPrompt(e); };
+    window.addEventListener('beforeinstallprompt', handler);
+    window.addEventListener('appinstalled', () => { setInstalled(true); setPrompt(null); });
+    return () => window.removeEventListener('beforeinstallprompt', handler);
+  }, []);
+
+  const install = async () => {
+    if (!prompt) return;
+    prompt.prompt();
+    const { outcome } = await prompt.userChoice;
+    if (outcome === 'accepted') { setInstalled(true); setPrompt(null); }
+  };
+
+  const isIOS = /iphone|ipad|ipod/i.test(navigator.userAgent);
+  return { prompt, installed, install, isIOS };
+}
+
 export function SettingsPage() {
   const navigate = useNavigate();
   const { user, signOut } = useAuth();
@@ -55,6 +79,9 @@ export function SettingsPage() {
     parseInt(localStorage.getItem(DEFAULT_DAYS_KEY) || '7')
   );
   const [daysSaved, setDaysSaved] = useState(false);
+
+  // PWA install
+  const { prompt, installed, install, isIOS } = usePWAInstall();
 
   // Sign out
   const [signingOut, setSigningOut] = useState(false);
@@ -161,6 +188,44 @@ export function SettingsPage() {
             {email && <div className="text-[11px] truncate" style={{ color: MUTED }}>{email}</div>}
           </div>
         </div>
+      </SectionCard>
+
+      {/* Install app */}
+      <SectionCard label="התקנת האפליקציה">
+        {installed ? (
+          <div className="flex items-center gap-2.5">
+            <span style={{ color: '#4ADE80', fontSize: 18 }}>✓</span>
+            <p className="text-sm font-medium" style={{ color: TEXT }}>האפליקציה מותקנת במכשיר</p>
+          </div>
+        ) : isIOS ? (
+          <div className="flex flex-col gap-3">
+            <p className="text-xs leading-relaxed" style={{ color: MUTED }}>להתקנה על iPhone / iPad:</p>
+            <div className="flex flex-col gap-2">
+              {[
+                'פתח את האתר ב-Safari',
+                'לחץ על כפתור השיתוף ⎙',
+                'בחר "הוסף למסך הבית"',
+              ].map((step, i) => (
+                <div key={i} className="flex items-center gap-3">
+                  <span className="w-5 h-5 rounded-full flex items-center justify-center text-[10px] font-bold shrink-0"
+                    style={{ background: `${ACCENT}20`, color: ACCENT }}>{i + 1}</span>
+                  <span className="text-xs" style={{ color: TEXT }}>{step}</span>
+                </div>
+              ))}
+            </div>
+          </div>
+        ) : prompt ? (
+          <div className="flex flex-col gap-3">
+            <p className="text-xs" style={{ color: MUTED }}>התקן את Uni Tracker כאפליקציה במכשיר שלך לגישה מהירה ומלאה ללא דפדפן.</p>
+            <button onClick={install}
+              className="w-full py-3 rounded-xl text-sm font-bold transition-opacity hover:opacity-80"
+              style={{ background: ACCENT, color: '#0D0D14' }}>
+              התקן אפליקציה
+            </button>
+          </div>
+        ) : (
+          <p className="text-xs" style={{ color: MUTED }}>פתח את האתר בדפדפן נייד כדי להתקין אותו כאפליקציה.</p>
+        )}
       </SectionCard>
 
       {/* Current week */}
